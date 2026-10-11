@@ -62,6 +62,9 @@ QComboBox { background: #2a2a2a; border: 1px solid #555; border-radius: 6px; pad
 QPushButton#bt { border: 2px solid #555; border-radius: 18px; padding: 8px 24px; font-size: 15px; }
 QPushButton#bt[connected="true"] { border-color: #4caf50; }
 QPushButton#small { border: 1px solid #555; border-radius: 6px; padding: 6px 10px; }
+QPushButton#quit { border: 1px solid #555; border-radius: 16px; color: #888; font-size: 15px; font-weight: bold; }
+QPushButton#quit:hover { border-color: #e53935; color: #e53935; }
+QMessageBox QPushButton { border: 1px solid #555; border-radius: 6px; padding: 6px 16px; min-width: 60px; }
 QPushButton#dir { background: #FFD700; color: #111; border-radius: 14px; font-size: 30px; font-weight: bold; }
 QPushButton#dir:pressed, QPushButton#dir[held="true"] { background: #c9a800; }
 QPushButton#dir:disabled { background: #2a2a2a; color: #555; }
@@ -258,7 +261,16 @@ class Window(QWidget):
         root.addLayout(claw)
         root.addLayout(head)
         root.addStretch()
-        root.addWidget(hint)
+
+        # Bas de fenêtre : aide clavier + bouton « X » (quitter) en bas à droite
+        quit_btn = QPushButton("✕", objectName="quit", toolTip="Quitter")
+        quit_btn.setFixedSize(32, 32)
+        quit_btn.clicked.connect(self.confirm_quit)
+        bottom = QHBoxLayout()
+        bottom.addSpacing(32)  # contrepoids du bouton pour garder l'aide centrée
+        bottom.addWidget(hint, 1)
+        bottom.addWidget(quit_btn, 0, Qt.AlignmentFlag.AlignBottom)
+        root.addLayout(bottom)
 
         # Le clavier pilote le robot : aucun widget ne doit garder le focus (Espace activerait un bouton)
         for w in self.findChildren(QPushButton) + [self.speed]:
@@ -441,6 +453,14 @@ class Window(QWidget):
             self.held_key = None
             self.link.send(STOP)
         super().focusOutEvent(e)
+
+    def confirm_quit(self):
+        box = QMessageBox(QMessageBox.Icon.Question, "Quitter", f"Quitter la télécommande {ROBOT_NAME} ?", parent=self)
+        yes = box.addButton("Quitter", QMessageBox.ButtonRole.AcceptRole)
+        box.setDefaultButton(box.addButton("Annuler", QMessageBox.ButtonRole.RejectRole))
+        box.exec()
+        if box.clickedButton() is yes:
+            self.close()  # closeEvent envoie un stop et coupe la liaison
 
     def closeEvent(self, e):
         if self.pairing is not None:
