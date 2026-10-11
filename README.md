@@ -24,6 +24,8 @@ python3 bt_pairing.py --repair   # supprime l'appairage existant et recommence (
 python3 bt_pairing.py --timeout 60
 ```
 
+`./runPairing.sh` fait la même chose depuis n'importe quel dossier (mêmes options) et vérifie que `python3-dbus` / `python3-gi` sont installés.
+
 Il ne fait rien si le robot est déjà appairé (à part le marquer de confiance). Il passe par BlueZ via D-Bus et répond lui-même au PIN demandé par le module (appairage « legacy »), sans `sudo`.
 
 **Manuel** (si besoin) :
