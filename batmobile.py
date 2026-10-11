@@ -265,7 +265,7 @@ class Window(QWidget):
         # Bas de fenêtre : aide clavier + bouton « X » (quitter) en bas à droite
         quit_btn = QPushButton("✕", objectName="quit", toolTip="Quitter")
         quit_btn.setFixedSize(32, 32)
-        quit_btn.clicked.connect(self.confirm_quit)
+        quit_btn.clicked.connect(self.close)  # confirmation dans closeEvent
         bottom = QHBoxLayout()
         bottom.addSpacing(32)  # contrepoids du bouton pour garder l'aide centrée
         bottom.addWidget(hint, 1)
@@ -459,10 +459,13 @@ class Window(QWidget):
         yes = box.addButton("Quitter", QMessageBox.ButtonRole.AcceptRole)
         box.setDefaultButton(box.addButton("Annuler", QMessageBox.ButtonRole.RejectRole))
         box.exec()
-        if box.clickedButton() is yes:
-            self.close()  # closeEvent envoie un stop et coupe la liaison
+        return box.clickedButton() is yes
 
     def closeEvent(self, e):
+        # Bouton ✕ comme croix de la barre de titre : confirmation avant de quitter
+        if not self.confirm_quit():
+            e.ignore()
+            return
         if self.pairing is not None:
             self.pairing.kill()
             self.pairing.waitForFinished(1000)
