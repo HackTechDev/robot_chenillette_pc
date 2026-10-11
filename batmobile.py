@@ -6,13 +6,14 @@ envoyé à l'appui d'un bouton (ou d'une touche), un espace (stop) au relâcheme
 aucune répétition pendant l'appui.
 """
 
+import os
 import re
 import socket
 import subprocess
 import sys
 import threading
 
-from PyQt6.QtCore import QObject, Qt, pyqtSignal
+from PyQt6.QtCore import QObject, QProcess, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -34,6 +35,7 @@ SPEED_LEVEL_DEFAULT = 4
 
 ROBOT_NAME = "BatMobile"
 RFCOMM_CHANNEL = 1  # canal SPP du Bluetooth Bee
+PAIRING_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bt_pairing.py")
 STOP = " "
 
 # Touches clavier → commande maintenue (Qt.Key ne dépend pas de la disposition AZERTY/QWERTY)
@@ -172,6 +174,8 @@ class Window(QWidget):
         self.is_connected = False
         self.connected_name = ""
         self.held_key = None
+        self.pairing = None  # QProcess de bt_pairing.py en cours
+        self.pairing_out = ""
 
         title = QLabel(ROBOT_NAME, objectName="title", alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -193,6 +197,7 @@ class Window(QWidget):
         bt_row.addStretch()
         bt_row.addWidget(self.bt_btn)
         bt_row.addStretch()
+        self.status = QLabel(objectName="hint", alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Vitesse (slider vertical, à gauche des déplacements) : haut = rapide
         self.speed = QSlider(Qt.Orientation.Vertical)
@@ -247,6 +252,7 @@ class Window(QWidget):
         root.addWidget(title)
         root.addLayout(device_row)
         root.addLayout(bt_row)
+        root.addWidget(self.status)
         root.addSpacing(20)
         root.addLayout(drive)
         root.addLayout(claw)
@@ -289,8 +295,12 @@ class Window(QWidget):
         robot = next((i for i, (_, n) in enumerate(devices) if n == ROBOT_NAME), None)
         if robot is not None:
             self.device_box.setCurrentIndex(robot)
-        elif current:
-            self.device_box.setEditText(current)
+        else:
+            # Robot pas encore appairé : « Connecter » lancera l'appairage automatique (bt_pairing.py)
+            self.device_box.insertItem(0, f"{ROBOT_NAME} — appairage automatique", None)
+            self.device_box.setCurrentIndex(0)
+            if current and current != self.device_box.itemText(0):
+                self.device_box.setEditText(current)
 
     def selected_address(self):
         text = self.device_box.currentText()
@@ -304,13 +314,55 @@ class Window(QWidget):
             self.link.disconnect()
             self.set_connected(False)
             return
+        if self.device_box.currentIndex() >= 0 and self.device_box.currentData() is None \
+                and self.device_box.currentText() == self.device_box.itemText(self.device_box.currentIndex()):
+            self.start_pairing()
+            return
         address = self.selected_address()
         if not address:
             QMessageBox.warning(self, "Appareil", "Choisir un appareil appairé ou saisir une adresse Bluetooth.")
             return
+        self.connect_to(address)
+
+    def connect_to(self, address):
         self.bt_btn.setText("Connexion…")
         self.bt_btn.setEnabled(False)
+        self.device_box.setEnabled(False)
+        self.status.setText("")
         self.link.connect_to(address, str(self.speed.value()))
+
+    def start_pairing(self):
+        """Lance bt_pairing.py (recherche, PIN, confiance) puis se connecte au robot."""
+        self.bt_btn.setText("Appairage…")
+        self.bt_btn.setEnabled(False)
+        self.device_box.setEnabled(False)
+        self.status.setText(f"Recherche de {ROBOT_NAME}…")
+        self.pairing_out = ""
+        self.pairing = QProcess(self)
+        self.pairing.readyReadStandardOutput.connect(self.on_pairing_output)
+        self.pairing.finished.connect(self.on_pairing_finished)
+        self.pairing.start(sys.executable, [PAIRING_SCRIPT])
+
+    def on_pairing_output(self):
+        lines = bytes(self.pairing.readAllStandardOutput()).decode(errors="replace").split("\n")
+        self.pairing_out += "\n".join(lines)
+        last = [l for l in lines if l.strip() and not l.startswith("ADDRESS=")]
+        if last:
+            self.status.setText(last[-1])
+
+    def on_pairing_finished(self, code, _status):
+        self.on_pairing_output()  # reste éventuel de la sortie
+        out = self.pairing_out
+        err = bytes(self.pairing.readAllStandardError()).decode(errors="replace").strip()
+        self.pairing = None
+        m = re.search(r"^ADDRESS=(\S+)", out, re.MULTILINE)
+        if code == 0 and m:
+            self.refresh_devices()
+            self.connect_to(m.group(1))
+            return
+        self.set_connected(False)
+        self.status.setText("")
+        QMessageBox.critical(self, "Appairage échoué", err or f"bt_pairing.py a échoué (code {code})")
 
     def on_connected(self, address):
         self.connected_name = self.device_box.currentText().split(" — ")[0] or address
@@ -318,6 +370,7 @@ class Window(QWidget):
 
     def on_failed(self, error):
         self.set_connected(False)
+        self.status.setText("")
         QMessageBox.critical(self, "Connexion échouée", error)
 
     def on_lost(self):
@@ -390,6 +443,9 @@ class Window(QWidget):
         super().focusOutEvent(e)
 
     def closeEvent(self, e):
+        if self.pairing is not None:
+            self.pairing.kill()
+            self.pairing.waitForFinished(1000)
         self.link.disconnect()  # envoie un stop avant de fermer
         super().closeEvent(e)
 

@@ -8,11 +8,25 @@ Application de bureau (PyQt6) pour piloter le robot Zumo Shield **BatMobile** (`
 - Python ≥ 3.9 (le module `socket` doit gérer `AF_BLUETOOTH`, c'est le cas des Python de distribution sous Linux)
 - PyQt6 : `sudo apt install python3-pyqt6` ou `pip install -r requirements.txt`
 
-Aucune autre dépendance : la liaison RFCOMM utilise la bibliothèque standard.
+- Pour l'appairage automatique : `python3-dbus` et `python3-gi` (installés d'office sur Ubuntu ; sinon `sudo apt install python3-dbus python3-gi`)
 
-## Appairer le robot (une seule fois)
+La liaison RFCOMM utilise la bibliothèque standard.
 
-Robot allumé (le module est visible ~4 s après le démarrage) :
+## Appairer le robot
+
+**Automatique** : rien à faire. Si BatMobile n'est pas encore appairé, la liste affiche « BatMobile — appairage automatique » et le bouton **Connecter** lance `bt_pairing.py`, puis se connecte. Robot allumé (le module est visible ~4 s après le démarrage).
+
+Le script peut aussi être lancé seul :
+
+```bash
+python3 bt_pairing.py            # allume l'adaptateur, cherche « BatMobile », appaire (PIN 0000), marque de confiance
+python3 bt_pairing.py --repair   # supprime l'appairage existant et recommence (après un changement de module, PIN refusé…)
+python3 bt_pairing.py --timeout 60
+```
+
+Il ne fait rien si le robot est déjà appairé (à part le marquer de confiance). Il passe par BlueZ via D-Bus et répond lui-même au PIN demandé par le module (appairage « legacy »), sans `sudo`.
+
+**Manuel** (si besoin) :
 
 ```bash
 bluetoothctl
@@ -33,8 +47,8 @@ Ne pas faire `connect` dans `bluetoothctl` : c'est l'application qui ouvre la li
 
 Le script se lance depuis n'importe quel dossier et vérifie que PyQt6 est installé.
 
-1. Choisir **BatMobile** dans la liste des appareils appairés (présélectionné s'il est trouvé ; ⟳ pour rafraîchir) — ou saisir directement son adresse.
-2. Cliquer **Connecter**. La vitesse du slider est envoyée au robot dès la connexion.
+1. **BatMobile** est présélectionné : appairé, ou « appairage automatique » s'il ne l'est pas encore (⟳ pour rafraîchir la liste). On peut aussi choisir un autre appareil appairé ou saisir une adresse.
+2. Cliquer **Connecter** : appairage si nécessaire (la progression s'affiche sous le bouton), puis connexion. La vitesse du slider est envoyée au robot dès la connexion.
 
 ## Commandes
 
@@ -70,4 +84,5 @@ Reste vrai : si la liaison radio est perdue sans que le PC ni le module ne le si
 
 - **`Connexion échouée : [Errno 111] Connection refused` / `Host is down`** : robot éteint, hors de portée, ou pas encore appairé ; vérifier aussi qu'un téléphone n'est pas déjà connecté au module (une seule connexion à la fois).
 - **`[Errno 13] Permission denied`** : vérifier que le service Bluetooth tourne (`systemctl status bluetooth`) et que l'adaptateur est allumé (`bluetoothctl power on`).
-- **Liste d'appareils vide** : appairer le robot (voir plus haut) ou saisir l'adresse à la main.
+- **`Appairage échoué : BatMobile introuvable`** : robot éteint ou hors de portée, ou module déjà connecté à un téléphone (il n'est alors plus visible).
+- **`PIN refusé`** : `python3 bt_pairing.py --repair`.
