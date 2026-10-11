@@ -51,6 +51,7 @@ Le script se lance depuis n'importe quel dossier et vérifie que PyQt6 est insta
 
 1. **BatMobile** est présélectionné : appairé, ou « appairage automatique » s'il ne l'est pas encore (⟳ pour rafraîchir la liste). On peut aussi choisir un autre appareil appairé ou saisir une adresse.
 2. Cliquer **Connecter** : appairage si nécessaire (la progression s'affiche sous le bouton), puis connexion. La vitesse du slider est envoyée au robot dès la connexion.
+3. Pour quitter : bouton **✕** en bas à droite (ou croix de la barre de titre). Une fenêtre demande confirmation : **Quitter** ou **Annuler** (choix par défaut, donc Entrée ou Échap ne ferment pas l'appli par erreur).
 
 ## Commandes
 
@@ -76,7 +77,7 @@ Le caractère est envoyé à l'appui, un espace (stop) au relâchement, sans ré
 Par rapport à l'appli Android, quelques garde-fous supplémentaires :
 
 - une erreur d'écriture ou une coupure de liaison est détectée : les boutons se désactivent et un message s'affiche ;
-- **Déconnecter** et la fermeture de la fenêtre envoient un stop avant de couper ;
+- **Déconnecter** et la fermeture de l'appli (après confirmation, via ✕ ou la barre de titre) envoient un stop avant de couper ;
 - si la fenêtre perd le focus pendant qu'une touche est enfoncée (le relâchement ne serait pas reçu), un stop est envoyé ;
 - au clavier, relâcher une ancienne touche alors qu'une autre est enfoncée n'envoie pas de stop.
 
