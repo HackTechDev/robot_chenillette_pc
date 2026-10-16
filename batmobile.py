@@ -184,6 +184,9 @@ class Window(QWidget):
 
         # Choix de l'appareil
         self.device_box = QComboBox(editable=True)
+        # Une adresse saisie reste du texte libre : sinon Entrée l'ajouterait comme élément
+        # sans adresse (None), pris ensuite pour « appairage automatique »
+        self.device_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.device_box.setMinimumWidth(260)
         self.device_box.lineEdit().setPlaceholderText("Adresse (ex. 00:18:A1:12:16:C5)")
         refresh = QPushButton("⟳", objectName="small", toolTip="Rafraîchir les appareils appairés")
