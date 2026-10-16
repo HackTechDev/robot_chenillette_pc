@@ -2,6 +2,8 @@
 
 Application de bureau (PyQt6) pour piloter le robot Zumo Shield **BatMobile** (`../robot_chenillette`) en Bluetooth classique (SPP/RFCOMM). Même interface et même protocole que l'appli Android (`../robot_chenillette_telecommande`).
 
+Une version C++ / Qt6, sans Python, existe aussi : [robot_chenillette_pc_qt6](https://github.com/HackTechDev/robot_chenillette_pc_qt6).
+
 ## Prérequis
 
 - Linux avec BlueZ (`bluetoothctl`) et un adaptateur Bluetooth
